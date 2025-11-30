@@ -70,7 +70,9 @@
             try {
                 if (data) {
                     let decompress = await decompressText(data);
+                    document.open()
                     document.write(decompress);
+                    document.close()
                 } else {
                     document.getElementById("compressBtn").addEventListener("click", async function() {
                         try {
