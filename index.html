@@ -70,9 +70,16 @@
             try {
                 if (data) {
                     let decompress = await decompressText(data);
-                    document.open()
-                    document.write(decompress);
-                    document.close()
+                    if (parameters.get("analyze")) {
+                        let pre = document.createElement("pre")
+                        pre.innerText = decompress
+                        document.documentElement.innerText = ""
+                        document.documentElement.appendChild(pre)
+                    } else {
+                        document.open()
+                        document.write(decompress);
+                        document.close()
+                    }
                 } else {
                     document.getElementById("compressBtn").addEventListener("click", async function() {
                         try {
