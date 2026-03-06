@@ -1,3 +1,4 @@
+<!-- Codeshare v2 (aka. XSS attack script) -->
 <!DOCTYPE html>
 <html>
     <head>
@@ -63,7 +64,8 @@
         } 
         
         let parameters = new URLSearchParams(document.location.search);
-        let data = parameters.get("data");
+        let data = location.hash.slice(1) || parameters.get("data");
+        
         
         let textareaInput = document.getElementById("textareaInput");
         (async function(){
@@ -84,7 +86,8 @@
                     document.getElementById("compressBtn").addEventListener("click", async function() {
                         try {
                             let compress = await compressText(textareaInput.value);
-                            location.search = "?data=" + encodeURIComponent(compress);
+                            location.hash = encodeURIComponent(compress);
+                            location.reload()
                         } catch (e) {
                             alert(e);
                         }
