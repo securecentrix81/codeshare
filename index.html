@@ -64,7 +64,7 @@
         } 
         
         let parameters = new URLSearchParams(document.location.search);
-        let data = location.hash.slice(1) || parameters.get("data");
+        let data = decodeURIComponent(location.hash.slice(1)) || parameters.get("data");
         
         
         let textareaInput = document.getElementById("textareaInput");
