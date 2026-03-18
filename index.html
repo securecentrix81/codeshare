@@ -1,103 +1,79 @@
-<!-- Codeshare v2 (aka. XSS attack script) -->
+<!-- Codeshare v2 (aka. very fun XSS attack script for free) -->
 <!DOCTYPE html>
 <html>
-    <head>
-        
-    </head>
-    <body>
-        <textarea id="textareaInput"></textarea><button id="compressBtn">Compress</button>
-        <div id="overlay" style="width:100%;height:100%;position:fixed;top:0;left:0;background-color:#ffffff;display:flex;justify-content:center;align-items:center;font-size:9vmin">Loading...</div>
-        <script>addEventListener("error",(e)=>{alert(e.message+e.lineno)})</script>
-        <script>
+<head>
+    <title>Codeshare</title>
+    <style>
+        body { font-family: sans-serif; padding: 20px; }
+        textarea { width: 100%; height: 200px; }
+        #overlay {
+            width:100%; height:100%; position:fixed; top:0; left:0; 
+            background:#fff; display:flex; justify-content:center; 
+            align-items:center; font-size:5vmin; z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <textarea id="textareaInput" placeholder="Paste code here..."></textarea>
+    <button id="compressBtn">Compress & Generate Link</button>
+    <div id="overlay">Loading...</div>
+
+    <script>
+        // Helper to convert Uint8Array to Base64
+        const bufferToBase64 = (buf) => btoa(String.fromCharCode(...new Uint8Array(buf)));
+        // Helper to convert Base64 back to Uint8Array
+        const base64ToBuffer = (str) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
+
         async function compressText(input) {
-          if (!input) {
-            alert('Nothing to compress');
-            return;
-          }
-        
-          try { 
             const encoder = new TextEncoder();
             const data = encoder.encode(input);
-        
             const stream = new ReadableStream({
-              start(controller) {
-                controller.enqueue(data);
-                controller.close();
-              }
+                start(c) { c.enqueue(data); c.close(); }
             }).pipeThrough(new CompressionStream('gzip'));
-        
             const compressed = await new Response(stream).arrayBuffer();
-            return String.fromCharCode(...new Uint8Array(compressed))
-            /*
-            const base64 = btoa();
-        
-            return base64;*/
-          } catch (e) {
-            alert('Compression failed: ' + e.message);
-          }
+            return bufferToBase64(compressed);
         }
-        
-        async function decompressText(input) {
-          if (!input) {
-            alert('Nothing to decompress');
-            return;
-          }
-        
-          try {
-            const binary = input//atob(input);
-            const data = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) data[i] = binary.charCodeAt(i);
-         
+
+        async function decompressText(base64) {
+            const data = base64ToBuffer(base64);
             const stream = new ReadableStream({
-              start(controller) {
-                controller.enqueue(data);
-                controller.close();
-              } 
+                start(c) { c.enqueue(data); c.close(); }
             }).pipeThrough(new DecompressionStream('gzip'));
-        
-            const decompressed = await new Response(stream).text();
-        
-            return decompressed;
-          } catch (e) {
-            alert('Decompression failed – is the string valid gzip+base64?\n\n' + e.message);
-          }
-        } 
-        
-        let parameters = new URLSearchParams(document.location.search);
-        let data = decodeURIComponent(location.hash.slice(1)) || parameters.get("data");
-        
-        
-        let textareaInput = document.getElementById("textareaInput");
-        (async function(){
-            try {
-                if (data) {
-                    let decompress = await decompressText(data);
-                    if (parameters.get("analyze")) {
-                        let pre = document.createElement("pre")
-                        pre.innerText = decompress
-                        document.documentElement.innerText = ""
-                        document.documentElement.appendChild(pre)
+            return await new Response(stream).text();
+        }
+
+        (async function init() {
+            const params = new URLSearchParams(window.location.search);
+            const hashData = window.location.hash.slice(1);
+            const data = hashData || params.get("data");
+
+            if (data) {
+                try {
+                    const decompressed = await decompressText(decodeURIComponent(data));
+                    if (params.get("analyze")) {
+                        document.body.innerHTML = `<pre></pre>`;
+                        document.querySelector("pre").textContent = decompressed;
                     } else {
-                        document.open()
-                        document.write(decompress);
-                        document.close()
+                        document.open();
+                        document.write(decompressed);
+                        document.close();
                     }
-                } else {
-                    document.getElementById("compressBtn").addEventListener("click", async function() {
-                        try {
-                            let compress = await compressText(textareaInput.value);
-                            location.hash = encodeURIComponent(compress);
-                            location.reload()
-                        } catch (e) {
-                            alert(e);
-                        }
-                    });
+                } catch (e) {
+                    alert("Decompression failed: " + e.message);
                     document.getElementById("overlay").remove();
                 }
-            } catch (e) {
-                alert(e);
+            } else {
+                document.getElementById("overlay").remove();
+                document.getElementById("compressBtn").onclick = async () => {
+                    const input = document.getElementById("textareaInput").value;
+                    if (!input) return alert("Nothing to compress");
+                    const compressed = await compressText(input);
+                    // Update URL without a full page reload to avoid redirect loops
+                    window.location.hash = encodeURIComponent(compressed);
+                    window.location.reload(); 
+                };
             }
         })();
-        </script>
-    </body>
+    </script>
+</body>
 </html>
